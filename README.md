@@ -13,6 +13,15 @@ You need a config-file. An example is provided. The downloads are based on speci
 product builds. So you need to know what product builds you're using and refernece them in the
 config.
 
+## Configuration parameters
+
+* **base_path**: The base path where the plugin description files are stored.
+* **storage_path**: The path where the plugin data is stored.
+* **base_url**: The url for the plugin description files.
+* **storage_url**: The url for the Plugin data.
+* **upstream_url**: The upstream for the plugins, usually https://plugins.jetbrains.com.
+* **versions**: A List of Jetbrains product builds to download plugins for.
+
 ## Docker-Image
 
 There is a very basic docker image available. You can use it by mounting the file storage
