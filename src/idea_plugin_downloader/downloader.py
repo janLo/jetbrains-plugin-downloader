@@ -147,7 +147,7 @@ class PluginFileManager:
         self._storage_url = storage_url
         self._storage = storage
 
-        self._regex = re.compile(r"^[A-Z]+-(?P<version>[0-9]+)\..*$")
+        self._regex = re.compile(r"^(?P<tool>[A-Z])+-(?P<version>[0-9]+)\..*$")
 
     def url_for(self, plugin_entry: PluginEntry):
         path = self._storage.plugin_dir(plugin_entry) / self._storage.plugin_filename(plugin_entry)
@@ -156,8 +156,11 @@ class PluginFileManager:
     def create_for(self, build_id: str, plugin_list: typing.List[PluginSpec]):
         match = self._regex.match(build_id)
         assert match is not None, f"Could not recognize build id {build_id}"
-        fileprefix = match.group("version")
-        xml_path = self._base_path / f"plugins-{fileprefix}.xml"
+
+        tool = match.group("tool")
+        version = match.group("version")
+
+        xml_path = self._base_path / f"plugins-{tool}-{version}.xml"
 
         logging.info(
             "Create plugin file for build %s with %d entries in file %s",
