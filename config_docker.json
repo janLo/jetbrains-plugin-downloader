@@ -1,0 +1,10 @@
+{
+  "base_path": "/data",
+  "storage_path": "/data/files",
+  "base_url": "http://mirror/plugins.jetbrains.com",
+  "storage_url": "http://mirror/plugins.jetbrains.com/files",
+  "upstream_url": "https://plugins.jetbrains.com",
+  "versions": [
+    "IU-202.7660.26"
+  ]
+}
