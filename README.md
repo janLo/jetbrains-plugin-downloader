@@ -24,7 +24,9 @@ config.
 
 ## Docker-Image
 
-There is a very basic docker image available. You can use it by mounting the file storage
+There is a very basic docker image 
+[available](https://hub.docker.com/repository/docker/janlo/jetbrains-plugin-downloader). 
+You can use it by mounting the file storage
 path and the configuration file into the container:
 
 ```
