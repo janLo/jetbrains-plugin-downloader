@@ -1,6 +1,11 @@
-FROM python:3
+FROM python:3-slim-buster
 
 ADD . /code
+
+RUN apt update && \
+    apt install -y curl && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN pip install /code && \
     cp /code/config_docker.json /etc/downloader_config.json && \
