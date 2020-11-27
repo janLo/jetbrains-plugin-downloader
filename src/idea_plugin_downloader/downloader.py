@@ -261,13 +261,18 @@ class PluginManager:
 
 @click.command("idea-plugin-downloader")
 @click.option(
-    "--config-file", type=click.Path(exists=True), help="Path to the config file", required=True
+    "--config-file",
+    type=click.Path(exists=True),
+    help="Path to the config file",
+    required=True,
+    envvar="DL_CONFIG_FILE",
 )
 @click.option(
     "--log-level",
     type=click.Choice(choices=["DEBUG", "INFO", "WARNING"]),
     help="Set the log-level",
     default="WARNING",
+    envvar="DL_LOG_LEVEL",
 )
 def main(config_file, log_level):
     logging.basicConfig(level=getattr(logging, log_level))
