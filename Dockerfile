@@ -2,14 +2,14 @@ FROM python:3-slim-buster
 
 ADD . /code
 
-RUN apt update && \
-    apt install -y curl && \
-    apt clean && \
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install /code && \
+RUN pip install --no-cache-dir /code && \
     cp /code/config_docker.json /etc/downloader_config.json && \
     mkdir /data && \
     mkdir /data/files
 
-CMD "idea-plugin-downloader --config-file /etc/downloader_config.json"
+CMD ["idea-plugin-downloader", "--config-file", "/etc/downloader_config.json"]
