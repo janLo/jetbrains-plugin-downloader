@@ -9,7 +9,6 @@ RUN apt-get update && \
 
 RUN pip install --no-cache-dir /code && \
     cp /code/config_docker.json /etc/downloader_config.json && \
-    mkdir /data && \
-    mkdir /data/files
+    mkdir -p /data/files
 
 CMD ["idea-plugin-downloader", "--config-file", "/etc/downloader_config.json"]
