@@ -103,6 +103,13 @@ class StorageManager:
             for version_dir in plugin_dir.iterdir():
                 if (plugin_dir.name, version_dir.name) not in version_set:
                     to_delete.append(version_dir)
+                    continue
+
+                if (
+                    self.plugin_filename(PluginEntry(id=plugin_dir.name, version=version_dir.name))
+                    is None
+                ):
+                    to_delete.append(version_dir)
 
         for entry in to_delete:
             _log.info("Delete plugin dir %s", entry)
