@@ -149,8 +149,17 @@ class PluginFileManager:
 
         self._regex = re.compile(r"^(?P<tool>[A-Z])+-(?P<version>[0-9]+)\..*$")
 
-    def url_for(self, plugin_entry: PluginEntry):
-        path = self._storage.plugin_dir(plugin_entry) / self._storage.plugin_filename(plugin_entry)
+    def url_for(self, plugin_entry: PluginEntry) -> typing.Optional[str]:
+        fpath = self._storage.plugin_filename(plugin_entry)
+        if fpath is None:
+            _log.warning(
+                "Cannot find a file in entry directory %s for version %s",
+                plugin_entry.id,
+                plugin_entry.version,
+            )
+            return None
+
+        path = self._storage.plugin_dir(plugin_entry) / fpath
         return urllib.parse.urljoin(self._storage_url, str(path))
 
     def create_for(self, build_id: str, plugin_list: typing.List[PluginSpec]):
@@ -169,6 +178,8 @@ class PluginFileManager:
             xml_path,
         )
 
+        entry_urls = [(item, self.url_for(item.entry)) for item in plugin_list]
+
         res = E.plugins(
             *[
                 E.plugin(
@@ -180,7 +191,8 @@ class PluginFileManager:
                         "version": item.entry.version,
                     },
                 )
-                for item in plugin_list
+                for item, url in entry_urls
+                if url is not None
             ]
         )
 
