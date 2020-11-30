@@ -94,19 +94,32 @@ class StorageManager:
 
         for plugin_dir in self._storage.iterdir():
             if not plugin_dir.is_dir():
+                _log.debug("No plugin directory: %s", plugin_dir)
                 continue
 
             if plugin_dir.name not in plugin_set:
+                _log.debug("Plugins in plugin dir %s are not used in any xml", plugin_dir)
                 to_delete.append(plugin_dir)
                 continue
 
+            versions = 0
             for version_dir in plugin_dir.iterdir():
+                versions += 1
+
                 if (plugin_dir.name, version_dir.name) not in version_set:
+                    _log.debug(
+                        "Plugin version in dir %s is not used in any plugin xml", version_dir
+                    )
                     to_delete.append(version_dir)
                     continue
 
                 if next(iter(version_dir.iterdir()), None) is None:
+                    _log.debug("Plugin version dir %s is empty", version_dir)
                     to_delete.append(version_dir)
+
+            if 0 == versions:
+                _log.debug("Plugin dir %s is empty", plugin_dir)
+                to_delete.append(plugin_dir)
 
         for entry in to_delete:
             _log.info("Delete plugin dir %s", entry)
