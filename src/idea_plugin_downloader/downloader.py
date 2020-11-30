@@ -37,7 +37,7 @@ class PluginSpec(typing.NamedTuple):
     idea_version: typing.Dict[str, str]
 
 
-def _escape_path(path):
+def _escape_path(path) -> str:
     return urllib.parse.quote(path).replace("/", ".")
 
 
@@ -105,10 +105,7 @@ class StorageManager:
                     to_delete.append(version_dir)
                     continue
 
-                if (
-                    self.plugin_filename(PluginEntry(id=plugin_dir.name, version=version_dir.name))
-                    is None
-                ):
+                if next(iter(version_dir.iterdir()), None) is None:
                     to_delete.append(version_dir)
 
         for entry in to_delete:
