@@ -140,6 +140,14 @@ class DownloadManager:
         _log.info("Download plugin %s from %s to %s", plugin_entry.id, url, target_path)
 
         curl_command = ["/usr/bin/curl", "--remote-name", "--remote-header-name", "--location", url]
+
+        _log.debug(
+            "Download plugin %s in version %s using the command %s",
+            plugin_entry.id,
+            plugin_entry.version,
+            curl_command,
+        )
+
         proc = subprocess.Popen(curl_command, stderr=subprocess.PIPE, cwd=target_path)
         proc.wait()
 
@@ -151,6 +159,8 @@ class DownloadManager:
                 proc.stderr.read(),
             )
             return False
+        else:
+            _log.debug("Output from %s (exit: %d):\n", proc.returncode, proc.stderr.read())
 
         return True
 
