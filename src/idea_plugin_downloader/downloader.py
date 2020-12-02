@@ -46,7 +46,7 @@ class StorageManager:
         self._storage = storage_path
 
     def plugin_dir(self, plugin_entry: PluginEntry) -> pathlib.Path:
-        return pathlib.Path(_escape_path(plugin_entry.id)) / plugin_entry.version
+        return pathlib.Path(_escape_path(plugin_entry.id)) / _escape_path(plugin_entry.version)
 
     def plugin_exists(self, plugin_entry: PluginEntry) -> bool:
         return (self._storage / self.plugin_dir(plugin_entry)).exists()
@@ -88,7 +88,9 @@ class StorageManager:
 
     def cleanup_plugin(self, plugin_entry_list: typing.List[PluginEntry]):
         plugin_set = {_escape_path(entry.id) for entry in plugin_entry_list}
-        version_set = {(_escape_path(entry.id), entry.version) for entry in plugin_entry_list}
+        version_set = {
+            (_escape_path(entry.id), _escape_path(entry.version)) for entry in plugin_entry_list
+        }
 
         to_delete = []
 
