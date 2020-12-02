@@ -191,7 +191,7 @@ class PluginFileManager:
         self._storage_url = storage_url
         self._storage = storage
 
-        self._regex = re.compile(r"^(?P<tool>[A-Z])+-(?P<version>[0-9]+)\..*$")
+        self._regex = re.compile(r"^(?P<tool>[A-Z]+)-(?P<version>[0-9]+)\..*$")
 
         if not self._storage_url.endswith("/"):
             self._storage_url += "/"
