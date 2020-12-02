@@ -193,6 +193,9 @@ class PluginFileManager:
 
         self._regex = re.compile(r"^(?P<tool>[A-Z])+-(?P<version>[0-9]+)\..*$")
 
+        if not self._storage_url.endswith("/"):
+            self._storage_url += "/"
+
     def url_for(self, plugin_entry: PluginEntry) -> typing.Optional[str]:
         fpath = self._storage.plugin_filename(plugin_entry)
         if fpath is None:
