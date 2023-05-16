@@ -1,20 +1,10 @@
 repos:
   - repo: "https://github.com/psf/black"
-    rev: 20.8b1
+    rev: 23.3.0
     hooks:
       - id: black
-        language_version: python3.8
-        args:
-          - "--line-length=100"
-  - repo: "https://gitlab.com/pycqa/flake8"
-    rev: 3.8.4
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    # Ruff version.
+    rev: "v0.0.267"
     hooks:
-    - id: flake8
-  - repo: "https://github.com/pre-commit/mirrors-isort.git"
-    rev: 'v5.6.4'
-    hooks:
-    - id: isort
-  - repo: https://github.com/asottile/setup-cfg-fmt.git
-    rev: v1.15.1
-    hooks:
-    - id: setup-cfg-fmt
+      - id: ruff
