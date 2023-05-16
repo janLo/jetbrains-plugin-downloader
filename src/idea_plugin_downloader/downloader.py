@@ -263,7 +263,7 @@ class PluginManager:
 
         _log.info("Loaded plugin-list for %s from %s", build_id, url)
 
-        for plugin_item in tree.iterfind("//idea-plugin"):
+        for plugin_item in tree.iterfind(".//idea-plugin"):
             try:
                 yield PluginSpec(
                     entry=PluginEntry(
