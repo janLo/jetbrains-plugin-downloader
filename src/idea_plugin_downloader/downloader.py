@@ -277,10 +277,13 @@ class PluginManager:
             except:  # noqa
                 _log.exception("Cannot parse entry %s", plugin_item)
 
-    def download_for(self, build_id: str):
+    def download_for(self, build_id: str, included=None):
         processed = []
 
         for plugin_spec in self.list_plugins_for(build_id=build_id):
+            if included and plugin_spec.entry.id not in included:
+                continue
+
             _log.debug(
                 "Plugin %s in version %s requested for build %s",
                 plugin_spec.entry.id,
@@ -323,7 +326,12 @@ class PluginManager:
     default="WARNING",
     envvar="DL_LOG_LEVEL",
 )
-def main(config_file, log_level):
+@click.option(
+    "--include-plugin",
+    multiple=True,
+    help="Select plugin ids to include (can be repeated)",
+)
+def main(config_file, log_level, include_plugin):
     logging.basicConfig(level=getattr(logging, log_level))
     config = Config.parse_file(config_file)
 
@@ -339,7 +347,7 @@ def main(config_file, log_level):
 
     for build_id in config.versions:
         _log.info("Process plugins for build %s", build_id)
-        pm.download_for(build_id=build_id)
+        pm.download_for(build_id=build_id, included=include_plugin)
 
     pm.cleanup_old()
 
