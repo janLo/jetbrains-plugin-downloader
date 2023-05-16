@@ -1,4 +1,6 @@
+import base64
 import contextlib
+import hashlib
 import logging
 import pathlib
 import re
@@ -39,7 +41,11 @@ class PluginSpec(typing.NamedTuple):
 
 
 def _escape_path(path) -> str:
-    return urllib.parse.quote(path).replace("/", ".")
+    return (
+        base64.urlsafe_b64encode(hashlib.md5(path.encode("utf-8")).digest())  # noqa S324
+        .decode("utf-8")
+        .replace("=", "")
+    )
 
 
 class StorageManager:
