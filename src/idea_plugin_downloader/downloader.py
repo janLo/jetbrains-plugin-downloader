@@ -168,9 +168,10 @@ class DownloadManager:
         else:
             _log.debug(
                 "Output from %s (exit: %d):\nstdout:\n%s\nstderr:\n%s",
+                curl_command,
                 proc.returncode,
-                proc.stdout.read(),
-                proc.stderr.read(),
+                proc.stdout.read().decode("utf-8"),
+                proc.stderr.read().decode("utf-8"),
             )
 
         return True
