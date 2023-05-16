@@ -10,6 +10,7 @@ import urllib.request
 
 import click
 import pydantic
+from defusedxml.ElementTree import parse
 from lxml import etree
 from lxml.builder import E
 
@@ -22,11 +23,11 @@ class Config(pydantic.BaseModel):
     base_url: str
     storage_url: str
     upstream_url: str
-    versions: typing.List[str]
+    versions: list[str]
 
 
 class PluginEntry(typing.NamedTuple):
-    id: str
+    id: str  # noqa A003
     version: str
 
 
@@ -34,7 +35,7 @@ class PluginSpec(typing.NamedTuple):
     entry: PluginEntry
     name: str
     description: str
-    idea_version: typing.Dict[str, str]
+    idea_version: dict[str, str]
 
 
 def _escape_path(path) -> str:
@@ -51,7 +52,7 @@ class StorageManager:
     def plugin_exists(self, plugin_entry: PluginEntry) -> bool:
         return (self._storage / self.plugin_dir(plugin_entry)).exists()
 
-    def plugin_filename(self, plugin_entry: PluginEntry) -> typing.Optional[str]:
+    def plugin_filename(self, plugin_entry: PluginEntry) -> str | None:
         for entry in (self._storage / self.plugin_dir(plugin_entry)).iterdir():
             if entry.is_file():
                 return entry.name
@@ -75,7 +76,6 @@ class StorageManager:
             try:
                 yield path
             except:  # noqa
-
                 if target_file.exists():
                     target_file.unlink()
                 backup_path.rename(target_file)
@@ -86,11 +86,9 @@ class StorageManager:
 
         yield path
 
-    def cleanup_plugin(self, plugin_entry_list: typing.List[PluginEntry]):
+    def cleanup_plugin(self, plugin_entry_list: list[PluginEntry]):
         plugin_set = {_escape_path(entry.id) for entry in plugin_entry_list}
-        version_set = {
-            (_escape_path(entry.id), _escape_path(entry.version)) for entry in plugin_entry_list
-        }
+        version_set = {(_escape_path(entry.id), _escape_path(entry.version)) for entry in plugin_entry_list}
 
         to_delete = []
 
@@ -109,9 +107,7 @@ class StorageManager:
                 versions += 1
 
                 if (plugin_dir.name, version_dir.name) not in version_set:
-                    _log.debug(
-                        "Plugin version in dir %s is not used in any plugin xml", version_dir
-                    )
+                    _log.debug("Plugin version in dir %s is not used in any plugin xml", version_dir)
                     to_delete.append(version_dir)
                     continue
 
@@ -133,9 +129,7 @@ class DownloadManager:
         self._base_url = base_url
 
     def download_plugin(self, plugin_entry: PluginEntry, target_path: pathlib.Path):
-        params = urllib.parse.urlencode(
-            {"pluginId": plugin_entry.id, "version": plugin_entry.version}
-        )
+        params = urllib.parse.urlencode({"pluginId": plugin_entry.id, "version": plugin_entry.version})
 
         url = f"{self._base_url}/plugin/download?{params}"
 
@@ -159,7 +153,7 @@ class DownloadManager:
         )
 
         proc = subprocess.Popen(
-            curl_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=target_path
+            curl_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=target_path  # noqa S603
         )
         proc.wait()
 
@@ -183,9 +177,7 @@ class DownloadManager:
 
 
 class PluginFileManager:
-    def __init__(
-        self, base_path: pathlib.Path, base_url: str, storage_url: str, storage: StorageManager
-    ):
+    def __init__(self, base_path: pathlib.Path, base_url: str, storage_url: str, storage: StorageManager):
         self._base_path = base_path
         self._base_url = base_url
         self._storage_url = storage_url
@@ -196,7 +188,7 @@ class PluginFileManager:
         if not self._storage_url.endswith("/"):
             self._storage_url += "/"
 
-    def url_for(self, plugin_entry: PluginEntry) -> typing.Optional[str]:
+    def url_for(self, plugin_entry: PluginEntry) -> str | None:
         fpath = self._storage.plugin_filename(plugin_entry)
         if fpath is None:
             _log.warning(
@@ -209,9 +201,11 @@ class PluginFileManager:
         path = self._storage.plugin_dir(plugin_entry) / fpath
         return urllib.parse.urljoin(self._storage_url, str(path))
 
-    def create_for(self, build_id: str, plugin_list: typing.List[PluginSpec]):
+    def create_for(self, build_id: str, plugin_list: list[PluginSpec]):
         match = self._regex.match(build_id)
-        assert match is not None, f"Could not recognize build id {build_id}"
+        if match is None:
+            msg = f"Could not recognize build id {build_id}"
+            raise AssertionError(msg)
 
         tool = match.group("tool")
         version = match.group("version")
@@ -265,7 +259,7 @@ class PluginManager:
 
     def list_plugins_for(self, build_id):
         url = f"{self._base_url}/plugins/list/?build={build_id}"
-        tree = etree.parse(urllib.request.urlopen(url))
+        tree = parse(urllib.request.urlopen(url))  # noqa S603
 
         _log.info("Loaded plugin-list for %s from %s", build_id, url)
 
@@ -294,13 +288,9 @@ class PluginManager:
                 build_id,
             )
 
-            if plugin_spec.entry not in self._plugins and not self._storage.plugin_exists(
-                plugin_spec.entry
-            ):
+            if plugin_spec.entry not in self._plugins and not self._storage.plugin_exists(plugin_spec.entry):
                 with self._storage.plugin_backup(plugin_spec.entry) as target_path:
-                    if not self._downloader.download_plugin(
-                        plugin_entry=plugin_spec.entry, target_path=target_path
-                    ):
+                    if not self._downloader.download_plugin(plugin_entry=plugin_spec.entry, target_path=target_path):
                         continue
             else:
                 _log.info(
@@ -345,9 +335,7 @@ def main(config_file, log_level):
         storage_url=config.storage_url,
         storage=sm,
     )
-    pm = PluginManager(
-        base_url=config.upstream_url, storage=sm, downloader=dm, plugin_file_manager=pfm
-    )
+    pm = PluginManager(base_url=config.upstream_url, storage=sm, downloader=dm, plugin_file_manager=pfm)
 
     for build_id in config.versions:
         _log.info("Process plugins for build %s", build_id)
