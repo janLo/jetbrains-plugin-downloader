@@ -17,6 +17,8 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 
@@ -45,22 +47,22 @@ include = [
 python = ["3.11"]
 
 [tool.hatch.envs.lint]
+installer = "uv"
 detached = true
 dependencies = [
-  "black>=23.1.0",
   "mypy>=1.0.0",
-  "ruff>=0.0.243",
+  "ruff>=0.7.4",
 ]
 
 [tool.hatch.envs.lint.scripts]
 typing = "mypy --install-types --non-interactive {args:src/idea_plugin_downloader tests}"
 style = [
-  "ruff {args:.}",
-  "black --check --diff {args:.}",
+  "ruff check {args:.}",
+  "ruff format --check --diff {args:.}",
 ]
 fmt = [
-  "black {args:.}",
-  "ruff --fix {args:.}",
+  "ruff format {args:.}",
+  "ruff check --fix {args:.}",
   "style",
 ]
 all = [
@@ -77,7 +79,7 @@ skip-string-normalization = true
 [tool.ruff]
 target-version = "py311"
 line-length = 120
-select = [
+lint.select = [
   "A",
   "ARG",
   "B",
@@ -104,27 +106,31 @@ select = [
   "W",
   "YTT",
 ]
-ignore = [
+lint.ignore = [
   # Allow non-abstract empty methods in abstract base classes
   "B027",
   # Allow boolean positional values in function calls, like `dict.get(... True)`
   "FBT003",
   # Ignore checks for possible passwords
   "S105", "S106", "S107",
+  # untrusted commands
+  "S603",
   # Ignore complexity
   "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+  # by recommendation from ruff
+  "ISC001",
 ]
-unfixable = [
+lint.unfixable = [
   # Don't touch unused imports
   "F401",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["idea_plugin_downloader"]
 
-[tool.ruff.flake8-tidy-imports]
+[tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
