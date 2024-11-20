@@ -4,7 +4,16 @@
   "base_url": "http://mirror/plugins.jetbrains.com",
   "storage_url": "http://mirror/plugins.jetbrains.com/files",
   "upstream_url": "https://plugins.jetbrains.com",
+  "products_url": "https://data.services.jetbrains.com/products",
   "versions": [
     "IU-202.7660.26"
+  ],
+  "products": [
+    {
+      "code": "IU",
+      "versions": 6,
+      "include_eap": true,
+      "include_rc": true
+    }
   ]
 }

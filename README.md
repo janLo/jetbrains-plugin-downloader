@@ -11,7 +11,7 @@ It needs python 3.8 or later!
 
 You need a configuration file. An example is provided. The downloads are based on specific jetbrains
 product builds. So you need to know what product builds you're using and reference them in the
-configuration file.
+configuration file. See below for the details about the build-ids.
 
 ## Configuration parameters
 
@@ -20,7 +20,34 @@ configuration file.
 * **base_url**: The url for the plugin description files.
 * **storage_url**: The url for the Plugin data.
 * **upstream_url**: The upstream for the plugins, usually https://plugins.jetbrains.com.
+* **products_url**: The upstream API endpoint to retch recent product builds, usually https://data.services.jetbrains.com/products (optional).
 * **versions**: A List of Jetbrains product builds to download plugins for.
+* **products**: A list of product specifications to download plugins for (optional, see below).
+
+### Products and versions
+
+The tool uses an API-Endpoint that needs a specific IDE build ID to fetch compatible plugin versions.
+These can be specified as a list in the `versions` list in the config file.
+The format is specified here: https://plugins.jetbrains.com/docs/marketplace/plugins-list.html and looks like `IU-243.21565.193`.
+
+If you don't want to maintain that list and instead always want to have the plugins for the last `N` major releases downloaded, you can use the `products` list instead.
+Each ite of that list is a json object like the following:
+
+```json
+{
+  "code": "IU",
+  "versions": "3",
+  "include_rc": true,
+  "include_eap": false
+}
+```
+
+This means that for the product with the [code](https://plugins.jetbrains.com/docs/marketplace/product-codes.html) `IU` the build-ids for the last three major releases are fetched.
+Each release walks through the lifecycle of being `eap` first, then `rc` and then release.
+The `include_{rc,eap}` flags tell the selector if a version should be considered before it's an official release.
+
+You can mix `versions` and `products` in your configuration. It will then be just a union of all that will be fetched.
+
 
 ## Docker image
 

@@ -27,6 +27,8 @@ dependencies = [
     "defusedxml",
     "lxml",
     "pydantic",
+    "orjson",
+    "httpx",
 ]
 
 [project.scripts]

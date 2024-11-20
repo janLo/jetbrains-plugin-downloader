@@ -16,6 +16,8 @@ from defusedxml.ElementTree import parse
 from lxml import etree
 from lxml.builder import E
 
+from idea_plugin_downloader import version_select
+
 _log = logging.getLogger(__name__)
 
 
@@ -26,6 +28,8 @@ class Config(pydantic.BaseModel):
     storage_url: str
     upstream_url: str
     versions: list[str]
+    products_url: str | None = None
+    products: list[version_select.ProductSpec] | None = None
 
 
 class PluginEntry(typing.NamedTuple):
@@ -355,7 +359,13 @@ def main(config_file, log_level, include_plugin):
     )
     pm = PluginManager(base_url=config.upstream_url, storage=sm, downloader=dm, plugin_file_manager=pfm)
 
-    for build_id in config.versions:
+    versions = config.versions
+
+    if config.products:
+        selector = version_select.VersionSelector(config.products_url)
+        versions = set(config.versions) | set(selector.fetch_product_versions(config.products))
+
+    for build_id in versions:
         _log.info("Process plugins for build %s", build_id)
         pm.download_for(build_id=build_id, included=include_plugin)
 
