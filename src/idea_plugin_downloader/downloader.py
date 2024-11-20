@@ -29,7 +29,7 @@ class Config(pydantic.BaseModel):
 
 
 class PluginEntry(typing.NamedTuple):
-    id: str  # noqa A003
+    id: str
     version: str
 
 
@@ -159,7 +159,10 @@ class DownloadManager:
         )
 
         proc = subprocess.Popen(
-            curl_command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, cwd=target_path  # noqa S603
+            curl_command,
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            cwd=target_path,
         )
         proc.wait()
 
