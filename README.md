@@ -38,13 +38,18 @@ Each ite of that list is a json object like the following:
   "code": "IU",
   "versions": "3",
   "include_rc": true,
-  "include_eap": false
+  "include_eap": false,
+  "use_for_client": false
 }
 ```
 
 This means that for the product with the [code](https://plugins.jetbrains.com/docs/marketplace/product-codes.html) `IU` the build-ids for the last three major releases are fetched.
 Each release walks through the lifecycle of being `eap` first, then `rc` and then release.
 The `include_{rc,eap}` flags tell the selector if a version should be considered before it's an official release.
+
+The `use_for_client` flag transforms every product build-id to a jetbrains client build id.
+That means, for `IU-242.23339.11` it would also emit `JBC-242.23339.11`.
+This is necessary if you want plugin definitions specific for the JetBrainsClient, because they're not a standalone product and therefore cannot be queried via the products API.
 
 You can mix `versions` and `products` in your configuration. It will then be just a union of all that will be fetched.
 

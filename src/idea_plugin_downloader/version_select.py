@@ -12,6 +12,7 @@ class ProductSpec(pydantic.BaseModel):
     versions: int = 5
     include_eap: bool = True
     include_rc: bool = True
+    use_for_client: bool = False
 
 
 class VersionSelector:
@@ -19,6 +20,7 @@ class VersionSelector:
         self.base_url = base_url or _BASE_URL
 
         self._session = None
+        self._client_versions: dict[str, str] = {}
 
     @property
     def session(self):
@@ -35,7 +37,9 @@ class VersionSelector:
 
     def fetch_product_versions(self, products: list[ProductSpec]) -> list[str]:
         try:
-            return [product_id for products_ids in products for product_id in self._fetch_product_version(products_ids)]
+            return [
+                product_id for products_ids in products for product_id in self._fetch_product_version(products_ids)
+            ] + list(self._client_versions.values())
         finally:
             self.close()
 
@@ -78,5 +82,8 @@ class VersionSelector:
                     continue
 
                 versions[version] = f"{product.code}-{build}"
+
+                if product.use_for_client and version not in self._client_versions:
+                    self._client_versions[version] = f"JBC-{build}"
 
         return sorted(versions.values(), reverse=True)
