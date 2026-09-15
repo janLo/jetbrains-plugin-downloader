@@ -37,6 +37,7 @@ Each ite of that list is a json object like the following:
 {
   "code": "IU",
   "versions": "3",
+  "builds": 1,
   "include_rc": true,
   "include_eap": false,
   "use_for_client": false
@@ -46,6 +47,13 @@ Each ite of that list is a json object like the following:
 This means that for the product with the [code](https://plugins.jetbrains.com/docs/marketplace/product-codes.html) `IU` the build-ids for the last three major releases are fetched.
 Each release walks through the lifecycle of being `eap` first, then `rc` and then release.
 The `include_{rc,eap}` flags tell the selector if a version should be considered before it's an official release.
+
+The `builds` option controls how many of the newest builds are kept *within* each major release
+(default `1`, i.e. only the newest). This matters because some plugins (notably JetBrains' own AI
+Assistant) declare compatibility with only a single patch build, or even a single exact build, via
+`since-build`/`until-build`. If your fleet of IDEs is not all on the same patch level within a
+major version, raise `builds` so the plugin lists for the older patch levels you still run are
+also generated (see "Output files" below).
 
 The `use_for_client` flag transforms every product build-id to a jetbrains client build id.
 That means, for `IU-242.23339.11` it would also emit `JBC-242.23339.11`.
@@ -58,6 +66,30 @@ distribution and IntelliJ IDEA Community Edition (`IC`) no longer receives separ
 If your configuration uses `"code": "IC"`, switch it to `"code": "IU"` to keep receiving
 plugin updates for 2025.3 and later.
 
+### Output files
+
+For every fetched build id, e.g. `IU-253.28294.334`, a `plugins-IU-253.28294.334.xml` is written
+under `base_path`, containing exactly the plugin versions the marketplace reports as compatible
+with that exact build. A [custom plugin repository](https://plugins.jetbrains.com/docs/intellij/custom-plugin-repository.html)
+XML file may only list a given plugin id once, so a single file cannot correctly serve every
+patch level of a major release at once — a plugin pinned to one build (or one narrow build range)
+would otherwise be either missing or wrong for some of your IDEs.
+
+The newest build fetched for each major is additionally written to the stable, version-independent
+`plugins-IU-253.xml` — point IDE configurations that should always track the latest patch level of
+a major at this file. If you configure `builds > 1`, the per-build files for the older patch
+levels are also generated, so IDEs pinned to an older build within the same major keep receiving
+correct listings too.
+
+### Plugin metadata
+
+By default the generated `<plugin>` entries also include the plugin's `vendor` and `description`,
+in addition to `name` and `idea-version`. This roughly grows a full plugin list from ~2 MiB to
+~15 MiB (measured with ~8900 plugins). `change-notes` is available too but defaults to off since
+it adds a further ~11 MiB and describes a version you are installing fresh anyway. Control this
+with `include_vendor`, `include_description` and `include_change_notes` in the config file. If you
+serve these files over HTTP, enabling gzip compression on the mirror is recommended — the
+description/change-notes text compresses several-fold.
 
 ## Docker image
 
