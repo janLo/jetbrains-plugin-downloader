@@ -53,6 +53,11 @@ This is necessary if you want plugin definitions specific for the JetBrainsClien
 
 You can mix `versions` and `products` in your configuration. It will then be just a union of all that will be fetched.
 
+Since IntelliJ IDEA 2025.3, Ultimate and Community are shipped as a single unified
+distribution and IntelliJ IDEA Community Edition (`IC`) no longer receives separate releases.
+If your configuration uses `"code": "IC"`, switch it to `"code": "IU"` to keep receiving
+plugin updates for 2025.3 and later.
+
 
 ## Docker image
 
