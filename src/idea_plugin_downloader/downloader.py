@@ -238,7 +238,7 @@ class PluginFileManager:
         res = E.plugins(
             *[
                 E.plugin(
-                    E.idea_version(dict(item.idea_version)),
+                    E("idea-version", dict(item.idea_version)),
                     E.name(item.name),
                     {
                         "id": item.entry.id,
