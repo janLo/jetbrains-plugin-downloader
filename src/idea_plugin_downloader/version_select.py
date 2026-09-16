@@ -7,9 +7,25 @@ import pydantic
 _BASE_URL = "https://data.services.jetbrains.com/products"
 
 
+def build_sort_key(build: str) -> tuple[int, ...]:
+    """Turn a dotted build number into a tuple that sorts correctly.
+
+    Non-numeric components (``*``, ``SNAPSHOT``) are treated as "greater than any
+    real number" so that e.g. ``253.28294.*`` sorts after ``253.28294.334``.
+    """
+    key = []
+    for part in build.split("."):
+        try:
+            key.append(int(part))
+        except ValueError:
+            key.append(2**31 - 1)
+    return tuple(key)
+
+
 class ProductSpec(pydantic.BaseModel):
     code: str
     versions: int = 5
+    builds: int = 1
     include_eap: bool = True
     include_rc: bool = True
     use_for_client: bool = False
@@ -56,34 +72,39 @@ class VersionSelector:
         resp.raise_for_status()
         data = orjson.loads(resp.content)
 
-        versions = {}
+        # major -> list of (date, build) for every accepted release of that major.
+        majors: dict[str, list[tuple[str, str]]] = {}
 
         for block in data:
             for release in block.get("releases", []):
-                if len(versions) == product.versions:
-                    break
-
                 if release.get("type") not in allowed_types:
                     continue
 
-                version = release.get("version", None)
-
-                if not version:
-                    continue
-
-                if version in versions:
-                    continue
-
-                if version != release.get("majorVersion"):
+                major = release.get("majorVersion")
+                if not major:
                     continue
 
                 build = release.get("build", None)
                 if not build:
                     continue
 
-                versions[version] = f"{product.code}-{build}"
+                if major not in majors:
+                    if len(majors) == product.versions:
+                        continue
+                    majors[major] = []
 
-                if product.use_for_client and version not in self._client_versions:
-                    self._client_versions[version] = f"JBC-{build}"
+                majors[major].append((release.get("date", ""), build))
 
-        return sorted(versions.values(), reverse=True)
+        builds: list[str] = []
+        for major_builds in majors.values():
+            # Newest first: sort by date, then by the numeric build id (a release can share a
+            # date with another, or the API can omit it).
+            major_builds.sort(key=lambda item: (item[0], build_sort_key(item[1])), reverse=True)
+
+            for _date, build in major_builds[: product.builds]:
+                builds.append(f"{product.code}-{build}")
+
+                if product.use_for_client:
+                    self._client_versions[build] = f"JBC-{build}"
+
+        return sorted(builds, reverse=True)

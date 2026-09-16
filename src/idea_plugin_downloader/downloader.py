@@ -30,6 +30,9 @@ class Config(pydantic.BaseModel):
     versions: list[str]
     products_url: str | None = None
     products: list[version_select.ProductSpec] | None = None
+    include_vendor: bool = True
+    include_description: bool = True
+    include_change_notes: bool = False
 
 
 class PluginEntry(typing.NamedTuple):
@@ -40,8 +43,11 @@ class PluginEntry(typing.NamedTuple):
 class PluginSpec(typing.NamedTuple):
     entry: PluginEntry
     name: str
-    description: str
+    description: str | None
     idea_version: dict[str, str]
+    vendor_name: str | None = None
+    vendor_attr: dict[str, str] | None = None
+    change_notes: str | None = None
 
 
 def _escape_path(path) -> str:
@@ -191,16 +197,32 @@ class DownloadManager:
 
 
 class PluginFileManager:
-    def __init__(self, base_path: pathlib.Path, base_url: str, storage_url: str, storage: StorageManager):
+    def __init__(
+        self,
+        base_path: pathlib.Path,
+        base_url: str,
+        storage_url: str,
+        storage: StorageManager,
+        *,
+        include_vendor: bool = True,
+        include_description: bool = True,
+        include_change_notes: bool = False,
+    ):
         self._base_path = base_path
         self._base_url = base_url
         self._storage_url = storage_url
         self._storage = storage
+        self._include_vendor = include_vendor
+        self._include_description = include_description
+        self._include_change_notes = include_change_notes
 
-        self._regex = re.compile(r"^(?P<tool>[A-Z]+)-(?P<version>[0-9]+)\..*$")
+        self._regex = re.compile(r"^(?P<tool>[A-Z]+)-(?P<build>(?P<major>[0-9]+)(?:\.[0-9]+)*)$")
 
         if not self._storage_url.endswith("/"):
             self._storage_url += "/"
+
+    def parse_build_id(self, build_id: str) -> re.Match | None:
+        return self._regex.match(build_id)
 
     def url_for(self, plugin_entry: PluginEntry) -> str | None:
         fpath = self._storage.plugin_filename(plugin_entry)
@@ -215,18 +237,47 @@ class PluginFileManager:
         path = self._storage.plugin_dir(plugin_entry) / fpath
         return urllib.parse.urljoin(self._storage_url, str(path))
 
-    def create_for(self, build_id: str, plugin_list: list[PluginSpec]):
-        match = self._regex.match(build_id)
+    def _plugin_element(self, item: PluginSpec) -> etree._Element:
+        children = [
+            E("idea-version", dict(item.idea_version)),
+            E.name(item.name),
+        ]
+
+        if self._include_vendor and item.vendor_name is not None:
+            children.append(E.vendor(item.vendor_name, dict(item.vendor_attr or {})))
+
+        if self._include_change_notes and item.change_notes:
+            change_notes = etree.Element("change-notes")
+            change_notes.text = etree.CDATA(item.change_notes)
+            children.append(change_notes)
+
+        if self._include_description and item.description:
+            description = etree.Element("description")
+            description.text = etree.CDATA(item.description)
+            children.append(description)
+
+        return E.plugin(
+            *children,
+            {
+                "id": item.entry.id,
+                "url": self.url_for(item.entry),
+                "version": item.entry.version,
+            },
+        )
+
+    def create_for(self, build_id: str, plugin_list: list[PluginSpec], *, major_alias: bool = False):
+        match = self.parse_build_id(build_id)
         if match is None:
             msg = f"Could not recognize build id {build_id}"
             raise AssertionError(msg)
 
         tool = match.group("tool")
-        version = match.group("version")
+        build = match.group("build")
+        major = match.group("major")
 
-        xml_path = self._base_path / f"plugins-{tool}-{version}.xml"
+        xml_path = self._base_path / f"plugins-{tool}-{build}.xml"
 
-        logging.info(
+        _log.info(
             "Create plugin file for build %s with %d entries in file %s",
             build_id,
             len(plugin_list),
@@ -235,24 +286,18 @@ class PluginFileManager:
 
         entry_urls = [(item, self.url_for(item.entry)) for item in plugin_list]
 
-        res = E.plugins(
-            *[
-                E.plugin(
-                    E.idea_version(dict(item.idea_version)),
-                    E.name(item.name),
-                    {
-                        "id": item.entry.id,
-                        "url": self.url_for(item.entry),
-                        "version": item.entry.version,
-                    },
-                )
-                for item, url in entry_urls
-                if url is not None
-            ]
-        )
+        res = E.plugins(*[self._plugin_element(item) for item, url in entry_urls if url is not None])
+
+        data = etree.tostring(res, pretty_print=True)
 
         with xml_path.open("wb") as fh:
-            fh.write(etree.tostring(res, pretty_print=True))
+            fh.write(data)
+
+        if major_alias:
+            alias_path = self._base_path / f"plugins-{tool}-{major}.xml"
+            _log.info("Alias newest build %s of major %s as %s", build_id, major, alias_path)
+            with alias_path.open("wb") as fh:
+                fh.write(data)
 
 
 class PluginManager:
@@ -271,6 +316,11 @@ class PluginManager:
         self._plugins = set()  # type: typing.Set[PluginEntry]
         self._builds = []
 
+    @staticmethod
+    def _text(item, tag: str) -> str | None:
+        el = item.find(tag)
+        return el.text if el is not None else None
+
     def list_plugins_for(self, build_id):
         url = f"{self._base_url}/plugins/list/?build={build_id}"
         tree = parse(urllib.request.urlopen(url))  # noqa S603
@@ -279,19 +329,23 @@ class PluginManager:
 
         for plugin_item in tree.iterfind(".//idea-plugin"):
             try:
+                vendor_item = plugin_item.find("vendor")
                 yield PluginSpec(
                     entry=PluginEntry(
                         id=plugin_item.find("id").text,
                         version=plugin_item.find("version").text,
                     ),
-                    description=plugin_item.find("description").text,
+                    description=self._text(plugin_item, "description"),
                     name=plugin_item.find("name").text,
                     idea_version=dict(plugin_item.find("idea-version").attrib),
+                    vendor_name=vendor_item.text if vendor_item is not None else None,
+                    vendor_attr=dict(vendor_item.attrib) if vendor_item is not None else None,
+                    change_notes=self._text(plugin_item, "change-notes"),
                 )
             except:  # noqa
                 _log.exception("Cannot parse entry %s", plugin_item)
 
-    def download_for(self, build_id: str, included=None):
+    def download_for(self, build_id: str, included=None, *, major_alias: bool = False):
         processed = []
 
         for plugin_spec in self.list_plugins_for(build_id=build_id):
@@ -318,7 +372,7 @@ class PluginManager:
             processed.append(plugin_spec)
             self._plugins.add(plugin_spec.entry)
 
-        self._plugin_fm.create_for(build_id=build_id, plugin_list=processed)
+        self._plugin_fm.create_for(build_id=build_id, plugin_list=processed, major_alias=major_alias)
 
     def cleanup_old(self):
         _log.info("Cleanup old plugins")
@@ -356,6 +410,9 @@ def main(config_file, log_level, include_plugin):
         base_url=config.base_url,
         storage_url=config.storage_url,
         storage=sm,
+        include_vendor=config.include_vendor,
+        include_description=config.include_description,
+        include_change_notes=config.include_change_notes,
     )
     pm = PluginManager(base_url=config.upstream_url, storage=sm, downloader=dm, plugin_file_manager=pfm)
 
@@ -365,9 +422,33 @@ def main(config_file, log_level, include_plugin):
         selector = version_select.VersionSelector(config.products_url)
         versions = set(config.versions) | set(selector.fetch_product_versions(config.products))
 
-    for build_id in versions:
+    # Parse every build id once; unparsable ones fall through unchanged to download_for(), which
+    # relies on PluginFileManager.create_for() raising the existing AssertionError for them.
+    parsed = {build_id: pfm.parse_build_id(build_id) for build_id in versions}
+
+    def sort_key(build_id: str) -> tuple:
+        match = parsed[build_id]
+        if match is None:
+            return ("", ())
+        return (match.group("tool"), version_select.build_sort_key(match.group("build")))
+
+    # Determine, per (tool, major), which fetched build is the newest one - that build's
+    # plugins-<tool>-<build>.xml is also written as the stable plugins-<tool>-<major>.xml alias.
+    newest_per_major: dict[tuple[str, str], str] = {}
+    for build_id, match in parsed.items():
+        if match is None:
+            continue
+
+        key = (match.group("tool"), match.group("major"))
+        current = newest_per_major.get(key)
+        if current is None or sort_key(build_id) > sort_key(current):
+            newest_per_major[key] = build_id
+
+    newest_build_ids = set(newest_per_major.values())
+
+    for build_id in sorted(versions, key=sort_key):
         _log.info("Process plugins for build %s", build_id)
-        pm.download_for(build_id=build_id, included=include_plugin)
+        pm.download_for(build_id=build_id, included=include_plugin, major_alias=build_id in newest_build_ids)
 
     pm.cleanup_old()
 
