@@ -1,4 +1,4 @@
-FROM python:3-slim-bullseye as builder
+FROM python:3.13-slim-trixie AS builder
 
 ADD . /code
 
@@ -6,7 +6,7 @@ RUN pip install hatch && \
     cd /code && \
     hatch build
 
-FROM python:3-slim-bullseye
+FROM python:3.13-slim-trixie
 
 COPY --from=builder /code/dist /dist/
 COPY config_docker.json /etc/downloader_config.json
